@@ -44,7 +44,7 @@ FRotator UCommonFunctions::ClampRotation(FRotator InRotation, FRotator Reference
 
     return ClampedRotation;
 }
-FRotator UCommonFunctions::ClampRotationWithRadius(FRotator InRotation, FRotator ReferenceRotation, float Radius)
+FRotator UCommonFunctions::ClampRotationWithRadius(FRotator InRotation, float Radius)
 {
     //vector of inrot
     FVector2D v = FVector2D(InRotation.Yaw, InRotation.Pitch);
@@ -62,25 +62,43 @@ FRotator UCommonFunctions::ClampRotationWithRadius(FRotator InRotation, FRotator
 
     return ClampedRotation;
 }
-FRotator UCommonFunctions::SmoothClampRotation(FRotator InRotation, FRotator ReferenceRotation, float DeltaTime, float InnerRadius = 15, float OuterRadius=25, float ClampStrengthMultiplier=1)
+FRotator UCommonFunctions::SmoothClampRotation(FRotator InRotator, float DeltaTime, UPARAM(ref) double& Alpha, float& OutClampStrength, float InnerRadius = 15, float OuterRadius = 25, float ClampStrengthMultiplier = 1)
 {
+
+    OutClampStrength = 0;
     //vector of inrot
-    FVector v = FVector(InRotation.Yaw, InRotation.Pitch, InRotation.Roll);
+    FVector v = InRotator.Quaternion().Euler();//FVector(InRotator.Yaw, InRotator.Pitch, InRotator.Roll);
 
     //within bounds
-    if (v.Size() < InnerRadius)
-        return InRotation;
+    if (v.Size() <= InnerRadius) {
+        return InRotator;
+    }
 
     float factor = (OuterRadius - InnerRadius) / FMath::Clamp(OuterRadius - v.Size(), 1, 100);
 
-    FRotator ClampedRotation = FMath::RInterpTo(InRotation, ReferenceRotation, DeltaTime, (factor * ClampStrengthMultiplier) - 1);
 
+    FQuat QuatInRotator = InRotator.Quaternion();
+    FQuat QuatInverseIn = QuatInRotator.Inverse().GetNormalized();
+    FQuat QuatScaledToMinRadius = FQuat(QuatInRotator.GetRotationAxis(), FMath::DegreesToRadians(InnerRadius));
+    FQuat QuatScaledToMaxRadius = FQuat(QuatInRotator.GetRotationAxis(), FMath::DegreesToRadians(OuterRadius));
 
-    return ClampedRotation;
+    //Recalculate InverseLerp
+    Alpha = UKismetMathLibrary::NormalizeToRange(v.Size(), InnerRadius, OuterRadius);
+
+    //Interp To Target
+    Alpha = FMath::Clamp(FMath::FInterpTo(Alpha, 0, DeltaTime, ClampStrengthMultiplier),0,1);
+
+    //for use to ex. scale input speed
+    OutClampStrength = Alpha;
+
+    //Slerped from outer towards inner
+    FQuat T = FQuat::Slerp(QuatScaledToMinRadius, QuatScaledToMaxRadius, Alpha);
+
+    return T.Rotator();
 }
-FRotator UCommonFunctions::SmoothClampRotationPerAxis(FRotator InRotation, FRotator ReferenceRotation, FRotator MinAngles, FRotator MaxAngles, float AngleThreshHold, float DeltaTime, float ClampStrengthMultiplier = 1)
+FRotator UCommonFunctions::SmoothClampRotationPerAxis(FRotator InRotation,  FRotator MinAngles, FRotator MaxAngles, float AngleThreshHold, float DeltaTime, float& OutClampStrength, float ClampStrengthMultiplier = 1)
 {
-    InRotation = UCommonFunctions::ClampRotation(InRotation, ReferenceRotation, MinAngles, MaxAngles);
+    InRotation = UCommonFunctions::ClampRotation(InRotation, FRotator::ZeroRotator, MinAngles, MaxAngles);
 
     // Calculate factors for each axis
     float PitchFactor = (MaxAngles.Pitch - MinAngles.Pitch) / FMath::Clamp(MaxAngles.Pitch - InRotation.Pitch, 1.f, 100.f);
@@ -88,36 +106,17 @@ FRotator UCommonFunctions::SmoothClampRotationPerAxis(FRotator InRotation, FRota
     float RollFactor = (MaxAngles.Roll - MinAngles.Roll) / FMath::Clamp(MaxAngles.Roll - InRotation.Roll, 1.f, 100.f);
 
     // Interpolate if outside threshold
-    if (FMath::Abs(InRotation.Pitch - ReferenceRotation.Pitch) > AngleThreshHold)
-        InRotation.Pitch = FMath::FInterpTo(InRotation.Pitch, ReferenceRotation.Pitch, DeltaTime, (PitchFactor * ClampStrengthMultiplier) - 1.f);
-    if (FMath::Abs(InRotation.Yaw - ReferenceRotation.Yaw) > AngleThreshHold)
-        InRotation.Yaw = FMath::FInterpTo(InRotation.Yaw, ReferenceRotation.Yaw, DeltaTime, (YawFactor * ClampStrengthMultiplier) - 1.f);
-    if (FMath::Abs(InRotation.Roll - ReferenceRotation.Roll) > AngleThreshHold)
-        InRotation.Roll = FMath::FInterpTo(InRotation.Roll, ReferenceRotation.Roll, DeltaTime, (RollFactor * ClampStrengthMultiplier) - 1.f);
+    if (FMath::Abs(InRotation.Pitch) > AngleThreshHold)
+        InRotation.Pitch = FMath::FInterpTo(InRotation.Pitch, 0, DeltaTime, (PitchFactor * ClampStrengthMultiplier) - 1.f);
+    if (FMath::Abs(InRotation.Yaw) > AngleThreshHold)
+        InRotation.Yaw = FMath::FInterpTo(InRotation.Yaw, 0, DeltaTime, (YawFactor * ClampStrengthMultiplier) - 1.f);
+    if (FMath::Abs(InRotation.Roll) > AngleThreshHold)
+        InRotation.Roll = FMath::FInterpTo(InRotation.Roll, 0, DeltaTime, (RollFactor * ClampStrengthMultiplier) - 1.f);
 
     return InRotation;
 }
 
-FVector UCommonFunctions::ClampToEllipsoid(FVector InV, FVector ReferenceV, float wr, float hr, float& outDebugRadius)
-{
-    float length = InV.Size();
 
-    //hypothenuse/2 always shorter than elipse radius
-    if (length <= ((wr*wr*hr*hr)/2)) {
-        return InV;
-    }
-
-    //ellipsoid radius at angle of normalized vector
-    float ellipseRadius = (wr * hr) / FMath::Sqrt(wr * wr * (InV.Y / length) * (InV.Y / length) + hr * hr * (InV.X / length) * (InV.X / length));
-    outDebugRadius = ellipseRadius;
-
-    //clamp to edge
-    if (length > ellipseRadius) {
-        InV = InV.GetSafeNormal() * ellipseRadius;
-    }
-
-    return InV;
-}
 FRotator UCommonFunctions::NormalizeRotator(FRotator Rotator) {
     return Rotator.GetNormalized();
 }
