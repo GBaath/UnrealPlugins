@@ -168,5 +168,23 @@ FVector UCommonFunctions::FastClampVectorAxis(FVector Vector, FVector MaxVector,
 
     return rv;
 }
+FRotator UCommonFunctions::RSphericalInterp(FRotator Current, FRotator Target, float DeltaTime, float Speed, UPARAM(ref)float& Alpha)
+{
+    if (DeltaTime == 0.f || Current == Target)
+    {
+        return Current;
+    }
 
+    if (Speed <= 0.f)
+    {
+        return Target;
+    }
+
+    Alpha = FMath::Clamp(FMath::FInterpTo(Alpha,1,DeltaTime,Speed),0.f,1.f);
+
+    const FQuat Delta = FQuat::Slerp(Current.Quaternion(), Target.Quaternion(), Alpha);
+
+    return Delta.Rotator();
+
+}
 
