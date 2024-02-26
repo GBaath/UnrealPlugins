@@ -1,12 +1,9 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 /*#include "CoreMinimal.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Math/Rotator.h"
 #include "Curves/CurveFloat.h"
 #include "CommonFunctions.generated.h"*/
-
 
 #include "CommonFunctions.h"
 
@@ -62,12 +59,12 @@ FRotator UCommonFunctions::ClampRotationWithRadius(FRotator InRotation, float Ra
 
     return ClampedRotation;
 }
-FRotator UCommonFunctions::SmoothClampRotation(FRotator InRotator, float DeltaTime, UPARAM(ref) double& Alpha, float& OutClampStrength, float InnerRadius = 15, float OuterRadius = 25, float ClampStrengthMultiplier = 1)
+FRotator UCommonFunctions::SmoothClampRotation(FRotator InRotator, FRotator ReferenceRotation, float DeltaTime, UPARAM(ref) double& Alpha, float& OutClampStrength, float InnerRadius = 15, float OuterRadius = 25, float ClampStrengthMultiplier = 1)
 {
 
     OutClampStrength = 0;
     //vector of inrot
-    FVector v = InRotator.Quaternion().Euler();//FVector(InRotator.Yaw, InRotator.Pitch, InRotator.Roll);
+    FVector v = (InRotator.Quaternion()*ReferenceRotation.Quaternion().Inverse()).Euler();//FVector(InRotator.Yaw, InRotator.Pitch, InRotator.Roll);
 
     //within bounds
     if (v.Size() <= InnerRadius) {
@@ -77,7 +74,9 @@ FRotator UCommonFunctions::SmoothClampRotation(FRotator InRotator, float DeltaTi
     float factor = (OuterRadius - InnerRadius) / FMath::Clamp(OuterRadius - v.Size(), 1, 100);
 
 
-    FQuat QuatInRotator = InRotator.Quaternion();
+
+
+    FQuat QuatInRotator = InRotator.Quaternion()*ReferenceRotation.Quaternion().Inverse();
     FQuat QuatInverseIn = QuatInRotator.Inverse().GetNormalized();
     FQuat QuatScaledToMinRadius = FQuat(QuatInRotator.GetRotationAxis(), FMath::DegreesToRadians(InnerRadius));
     FQuat QuatScaledToMaxRadius = FQuat(QuatInRotator.GetRotationAxis(), FMath::DegreesToRadians(OuterRadius));
@@ -94,9 +93,9 @@ FRotator UCommonFunctions::SmoothClampRotation(FRotator InRotator, float DeltaTi
     //Slerped from outer towards inner
     FQuat T = FQuat::Slerp(QuatScaledToMinRadius, QuatScaledToMaxRadius, Alpha);
 
-    return T.Rotator();
+    return (T*ReferenceRotation.Quaternion()).Rotator();
 }
-FRotator UCommonFunctions::SmoothClampRotationPerAxis(FRotator InRotation,  FRotator MinAngles, FRotator MaxAngles, float AngleThreshHold, float DeltaTime, float& OutClampStrength, float ClampStrengthMultiplier = 1)
+FRotator UCommonFunctions::SmoothClampRotationPerAxis(FRotator InRotation,  FRotator ReferenceRotation, FRotator MinAngles, FRotator MaxAngles, float AngleThreshHold, float DeltaTime, float& OutClampStrength, float ClampStrengthMultiplier = 1)
 {
     InRotation = UCommonFunctions::ClampRotation(InRotation, FRotator::ZeroRotator, MinAngles, MaxAngles);
 
@@ -116,7 +115,26 @@ FRotator UCommonFunctions::SmoothClampRotationPerAxis(FRotator InRotation,  FRot
     return InRotation;
 }
 
+FVector UCommonFunctions::ClampToEllipsoid(FVector InV, FVector ReferenceV, float wr, float hr, float& outDebugRadius)
+{
+    float length = InV.Size();
 
+    //hypothenuse/2 always shorter than elipse radius
+    if (length <= ((wr*wr*hr*hr)/2)) {
+        return InV;
+    }
+
+    //ellipsoid radius at angle of normalized vector
+    float ellipseRadius = (wr * hr) / FMath::Sqrt(wr * wr * (InV.Y / length) * (InV.Y / length) + hr * hr * (InV.X / length) * (InV.X / length));
+    outDebugRadius = ellipseRadius;
+
+    //clamp to edge
+    if (length > ellipseRadius) {
+        InV = InV.GetSafeNormal() * ellipseRadius;
+    }
+
+    return InV;
+}
 FRotator UCommonFunctions::NormalizeRotator(FRotator Rotator) {
     return Rotator.GetNormalized();
 }
@@ -168,15 +186,18 @@ FVector UCommonFunctions::FastClampVectorAxis(FVector Vector, FVector MaxVector,
 
     return rv;
 }
+
 FRotator UCommonFunctions::RSphericalInterp(FRotator Current, FRotator Target, float DeltaTime, float Speed, UPARAM(ref)float& Alpha)
 {
     if (DeltaTime == 0.f || Current == Target)
     {
+        Alpha = 0;
         return Current;
     }
 
     if (Speed <= 0.f)
     {
+        Alpha = 1;
         return Target;
     }
 
@@ -187,4 +208,3 @@ FRotator UCommonFunctions::RSphericalInterp(FRotator Current, FRotator Target, f
     return Delta.Rotator();
 
 }
-
