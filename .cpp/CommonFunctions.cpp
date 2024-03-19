@@ -1,11 +1,12 @@
-/*#include "CoreMinimal.h"
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#include "CommonFunctions.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Math/Rotator.h"
 #include "Curves/CurveFloat.h"
-#include "CommonFunctions.generated.h"*/
+#include "Math/Quat.h"
 
-#include "CommonFunctions.h"
 
 void UCommonFunctions::InterpolateActor(AActor* Actor, FVector TargetLocation, FRotator TargetRotation, float DeltaTime, float InterpSpeed, bool& isCompleted)
 {
@@ -175,7 +176,7 @@ FRotator UCommonFunctions::QuickSubtractRotation(FRotator Rotation, FVector Sub)
 
     return r;
 }
-FVector UCommonFunctions::FastClampVectorAxis(FVector Vector, FVector MaxVector, FVector MinVector) 
+FVector UCommonFunctions::FastClampVectorAxes(FVector Vector, FVector MaxVector, FVector MinVector) 
 {
     FVector rv;
 
@@ -187,11 +188,32 @@ FVector UCommonFunctions::FastClampVectorAxis(FVector Vector, FVector MaxVector,
     return rv;
 }
 
+FVector UCommonFunctions::ClampVectorMin(FVector VectorToClamp, FVector MinValues)
+{
+    FVector newV = VectorToClamp;
+
+    newV.X = VectorToClamp.X < MinValues.X ? MinValues.X : VectorToClamp.X;
+    newV.Y = VectorToClamp.Y < MinValues.Y ? MinValues.Y : VectorToClamp.Y;
+    newV.Z = VectorToClamp.Z < MinValues.Z ? MinValues.Z : VectorToClamp.Z;
+
+    return newV;
+}
+
+FVector UCommonFunctions::ClampVectorMax(FVector VectorToClamp, FVector MaxValues)
+{
+    FVector newV = VectorToClamp;
+
+    newV.X = VectorToClamp.X > MaxValues.X ? MaxValues.X : VectorToClamp.X;
+    newV.Y = VectorToClamp.Y > MaxValues.Y ? MaxValues.Y : VectorToClamp.Y;
+    newV.Z = VectorToClamp.Z > MaxValues.Z ? MaxValues.Z : VectorToClamp.Z;
+
+    return newV;
+}
+
 FRotator UCommonFunctions::RSphericalInterp(FRotator Current, FRotator Target, float DeltaTime, float Speed, UPARAM(ref)float& Alpha)
 {
     if (DeltaTime == 0.f || Current == Target)
     {
-        Alpha = 0;
         return Current;
     }
 
@@ -206,5 +228,13 @@ FRotator UCommonFunctions::RSphericalInterp(FRotator Current, FRotator Target, f
     const FQuat Delta = FQuat::Slerp(Current.Quaternion(), Target.Quaternion(), Alpha);
 
     return Delta.Rotator();
+
+}
+void UCommonFunctions::TransformVector(UPARAM(ref)FVector& V, const FTransform T)
+{
+    FTransform InT = FTransform(V);
+    FTransform NewT = UKismetMathLibrary::ComposeTransforms(InT, T);
+
+    V = NewT.GetLocation();
 
 }
