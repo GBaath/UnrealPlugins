@@ -1,6 +1,4 @@
-//WORK IN PROGRESS
-
-
+// Fill out your copyright notice in the Description page of Project Settings.
 #pragma once
 
 #include "VolumeInterpolator.h"
@@ -102,49 +100,74 @@ void UVolumeInterpolator::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	//	TickInterpolate(DeltaTime);
 
 }
+FOrientedBox ConvertFrom3f(UE::Geometry::FOrientedBox3f InBox) {
 
+    FOrientedBox OutBox;
+
+
+    OutBox.AxisX = (FVector)InBox.AxisX();
+    OutBox.AxisY = (FVector)InBox.AxisY();
+    OutBox.AxisZ = (FVector)InBox.AxisZ();
+
+    OutBox.Center = (FVector)InBox.Center();
+
+    OutBox.ExtentX = InBox.Extents.X*2;
+    OutBox.ExtentY = InBox.Extents.Y*2;
+    OutBox.ExtentZ = InBox.Extents.Z*2;
+
+    return OutBox;
+
+}
 
 //TODO call in start
 //this should not be recalculated during runtime
-static void GetSmallestBoundingShape(const FTransform WorldTransform, TArray<FVector> Verts, FBoxSphereBounds& OutData, FRotator& OutRotationData, bool& BoxIsSmallest) {
+void GetSmallestBoundingShape(const FTransform WorldTransform, TArray<FVector> Verts, float& OutRadius , FOrientedBox& OutBox, bool& BoxIsSmallest) {
     UE::Geometry::TMinVolumeBox3<float> box;
 
-    //TODO test if this computes correctly
-    TFunctionRef<FVector3f(int32)> GetPoint =
-        [Verts](int32 i) {
-        return (FVector3f)Verts[FMath::Clamp(i, 0, Verts.Num() - 1)];
+    TFunctionRef<FVector3f(int32)> GetVertexInWorldSpace =
+        [Verts,WorldTransform](int32 i) {
+
+        FVector V  = Verts[FMath::Clamp(i, 0, Verts.Num() - 1)];
+        UCommonFunctions::TransformVector(V, WorldTransform);
+
+        return (FVector3f)V;
         };
 
     //get smallest boundingbox
     UE::Geometry::FOrientedBox3f OBox;
-    if (box.Solve(Verts.Num(), GetPoint, false)) {
+    if (box.Solve(Verts.Num(), GetVertexInWorldSpace, true)) {
         box.GetResult(OBox);
-        return;
     }
     else
     {
+        UE_LOG(LogTemp, Warning, TEXT("Failed To Solve BoxVolume"));
+
         BoxIsSmallest = false;
         //return SphereData
         //largest radius is smallest boundingbox
         float LargestRadius = 0.f;
         for (FVector& vert : Verts) {
-            LargestRadius = FMath::Max(vert.Length(), LargestRadius);
+            FVector V = vert;
+            UCommonFunctions::TransformVector(V, WorldTransform);
+            LargestRadius = FMath::Max(V.Length(), LargestRadius);
         }
-        OutData.SphereRadius = LargestRadius;
+       OutRadius = LargestRadius;
 
         return;
     }
     //TODO make inlinefunc
-    //largest radius is smallest boundingbox
+    //largest radius is smallest bounding
     float LargestRadius = 0.f;
     for (FVector& vert : Verts) {
-        LargestRadius = FMath::Max(vert.Length(), LargestRadius);
+        FVector V = vert;
+        UCommonFunctions::TransformVector(V, WorldTransform);
+        LargestRadius = FMath::Max(V.Length(), LargestRadius);
     }
 
     //compare volumes
     if (OBox.Volume() > ((4 / 3) * UKismetMathLibrary::GetPI() * FMath::Cube(LargestRadius))) {
         BoxIsSmallest = false;
-        OutData.SphereRadius = LargestRadius;
+        OutRadius = LargestRadius;
         return;
     }
 
@@ -152,33 +175,39 @@ static void GetSmallestBoundingShape(const FTransform WorldTransform, TArray<FVe
 
     //TODO test wether this scales with objectscale
     //TODO test if rotationdata get translated
-    OutData.BoxExtent = (FVector)OBox.Extents;
-    OutRotationData = (FRotator)OBox.Frame.Rotation;
-}
 
-static void GetDataFromVerticies(UStaticMeshComponent* Mesh, const FTransform WorldTransform, TArray<FVector>& Verts, FJsonSerializableArrayInt& TriangleIndexes, TArray<FVector>& Normals, float& OutAvgRadiusToCenter, float& OutMaxRadiusToCenter, FBox& OutMaxBoxBounds) {
+    OutBox = ConvertFrom3f(OBox);
+
+    return;
+}
+void GetDataFromVerticies(UStaticMeshComponent* Mesh, const FTransform WorldTransform, TArray<FVector>& Verts, FJsonSerializableArrayInt& TriangleIndexes, TArray<FVector>& Normals,
+    float& OutAvgRadiusToCenter, float& OutMaxRadiusToCenter, bool& bBoxIsSmallestBoundingShape, FOrientedBox& OutMaxBoxBounds) {
 
     OutMaxRadiusToCenter = 0;
     OutAvgRadiusToCenter = 0;
-    OutMaxBoxBounds.Init();
 
     TArray<FVector2D> UV;
     TArray<FProcMeshTangent> Tangents;
     UKismetProceduralMeshLibrary::GetSectionFromStaticMesh(Mesh->GetStaticMesh(), 0, 0, Verts, TriangleIndexes, Normals, UV, Tangents);
 
     float MagnitudeValues = 0;
+    float Radius = 0;
 
-    bool bBoxIsBoundingVolume = false;
-    FBoxSphereBounds Bounds;
+    FOrientedBox Box;
+
+
+    //REPLACE FUNCTION WITH VARIABLES SET FROM START
     //verts are localspace
-    GetSmallestBoundingShape(WorldTransform, Verts, Bounds, bBoxIsBoundingVolume);
+    GetSmallestBoundingShape(WorldTransform, Verts, Radius, Box ,bBoxIsSmallestBoundingShape);
 
     //Randomize point using radius or box depening on smallest error margin 
-    if (bBoxIsBoundingVolume) {
+    if (bBoxIsSmallestBoundingShape) {
 
-        OutMaxBoxBounds = Bounds.GetBox();
+        OutMaxBoxBounds = Box;
+        return;
     }
     else {
+        //iterate for avarageradius
         for (FVector& vert : Verts) {
 
             UKismetSystemLibrary::DrawDebugPoint(Mesh, vert, 3.f, FLinearColor::Blue, 5.f);
@@ -192,9 +221,6 @@ static void GetDataFromVerticies(UStaticMeshComponent* Mesh, const FTransform Wo
             float Magnitude = (vert - WorldTransform.GetLocation()).Length();
             MagnitudeValues += Magnitude;
 
-            //maxradius from boundingshape
-            //this or larges side of the localspace boundingbox
-           // OutMaxRadiusToCenter = FMath::Max(Magnitude, OutMaxRadiusToCenter);
         }
         if (Verts.Num() <= 0) {
             UE_LOG(LogTemp, Warning, TEXT("Verticies Array is 0"));
@@ -203,13 +229,13 @@ static void GetDataFromVerticies(UStaticMeshComponent* Mesh, const FTransform Wo
 
         OutAvgRadiusToCenter = MagnitudeValues / Verts.Num();
         OutAvgRadiusToCenter;
-        OutMaxRadiusToCenter = Bounds.SphereRadius;
+        OutMaxRadiusToCenter = Radius;
         OutMaxRadiusToCenter;
     }
 
     return;
 }
-static int RayMeshIntersectionCount(UStaticMeshComponent* Mesh, FVector RayStart, FVector RayVector, const FTransform WorldTransform)
+int UVolumeInterpolator::RayMeshIntersectionCount(UStaticMeshComponent* Mesh, FVector RayStart, FVector RayVector, const FTransform WorldTransform)
 {
 
     int LoopIndex = 0;
@@ -231,7 +257,7 @@ static int RayMeshIntersectionCount(UStaticMeshComponent* Mesh, FVector RayStart
         {
             //somethings incorrect with the indexes here pos is need to convert from localspace to worldspace, vertex points are relative to world origin i think
             FVector WorldSpaceNormal = ((Normals[Triangles[LoopIndex + TriangleVertex]]));
-            UCommonFunctions::TransformVector(WorldSpaceNormal, WorldTransform);
+            //UCommonFunctions::TransformVector(WorldSpaceNormal, WorldTransform);
             double dotPr = UKismetMathLibrary::Dot_VectorVector(RayVector, WorldSpaceNormal);
 
             //triangle cant be intersected aka angle is 90 deg
@@ -248,7 +274,7 @@ static int RayMeshIntersectionCount(UStaticMeshComponent* Mesh, FVector RayStart
         if (TriangleToRayCheck.Num() == 3) {
 
             FVector IntersectionPoint;
-            if (UCommonFunctions::RayIntersectsTriangle(RayStart, RayVector, TriangleToRayCheck, IntersectionPoint))
+            if (RayIntersectsTriangle(RayStart, RayVector, TriangleToRayCheck, IntersectionPoint))
                 Intersections++;
 
         }
@@ -302,10 +328,11 @@ bool UVolumeInterpolator::RayIntersectsTriangle(FVector RayOrigin, FVector RayVe
         return false;
 }
 
-FVector UVolumeInterpolator::GetRandomPointsInMeshBounds(UStaticMeshComponent* Mesh, const FTransform WorldTransform, float& outAvgRadius, float& outMaxRadius)
+FVector UVolumeInterpolator::GetRandomPointsInMeshBounds(UStaticMeshComponent* Mesh, const FTransform WorldTransform, float& outAvgRadius, float& outMaxRadius, bool& OutTryBox)
 {
     float AvgRadius, MaxRadius;
-    FBox BoundingBox;
+    FOrientedBox BoundingBox;
+    bool bBoxBounds = false;
 
     TArray<FVector> Verts;
     FJsonSerializableArrayInt Triangles;
@@ -313,39 +340,53 @@ FVector UVolumeInterpolator::GetRandomPointsInMeshBounds(UStaticMeshComponent* M
 
     //calculate radiuses or boundingbox for randomizing the point with the least margin for error, normal distrubution at the avarageradius
     //save vertex data for point in polygon alg
-    GetDataFromVerticies(Mesh, WorldTransform, Verts, Triangles, Normals, AvgRadius, MaxRadius, BoundingBox);
+    GetDataFromVerticies(Mesh, WorldTransform, Verts, Triangles, Normals, AvgRadius, MaxRadius, bBoxBounds, BoundingBox);
 
     //Generate random point in boundingsphere
     FVector Point;// = WorldTransform.GetLocation();
-    int maxiterations = 100;
+    int maxiterations = 1000;
     int i = 0;
+    OutTryBox = bBoxBounds;
 
     //Spherebounds were bigger than Boxbounds, use box
-    if (MaxRadius == 0) {
+    if (bBoxBounds) {
+
+        
+
         do
         {
-            //TODO make sure this is calculated using local coords
-
-            //less range for every iteration
-            float AlphaMinus = i * 0.01f;
+            //less range for every iteration´, after 100 i alpha is always .5f
+            float AlphaMinus = i * 0.005f;
             //get random xyz val from box
-            Point.X = FMath::Lerp(BoundingBox.Min.X, BoundingBox.Max.X, FMath::FRandRange(0.f, 1.f - AlphaMinus));
-            Point.Y = FMath::Lerp(BoundingBox.Min.Y, BoundingBox.Max.Y, FMath::FRandRange(0.f, 1.f - AlphaMinus));
-            Point.Z = FMath::Lerp(BoundingBox.Min.Z, BoundingBox.Max.Z, FMath::FRandRange(0.f, 1.f - AlphaMinus));
+            Point = BoundingBox.Center;
+            FVector AddVector = FVector::Zero();
+        /*    float r1 = FMath::FRandRange(0.0f, 1.0f);
+            float r2 = FMath::FRandRange(0 + AlphaMinus, 1 - AlphaMinus);
+            float r3 = FMath::FRandRange(0 + AlphaMinus, 1 - AlphaMinus);*/
+
+
+            AddVector += BoundingBox.AxisX * FMath::Lerp(BoundingBox.ExtentX* -.5f, BoundingBox.ExtentX*.5f, FMath::FRandRange(0 + AlphaMinus, 1 - AlphaMinus));
+            AddVector += BoundingBox.AxisY * FMath::Lerp(BoundingBox.ExtentY* -.5f, BoundingBox.ExtentY*.5f, FMath::FRandRange(0 + AlphaMinus, 1 - AlphaMinus));
+            AddVector += BoundingBox.AxisZ * FMath::Lerp(BoundingBox.ExtentZ* -.5f, BoundingBox.ExtentZ*.5f,  FMath::FRandRange(0 + AlphaMinus, 1 - AlphaMinus));
+
+            Point += AddVector;
+
             i++;
         } //point in polygon intersections always odd
         while (RayMeshIntersectionCount(Mesh, Point, FVector(100000, 0, 0), WorldTransform) % 2 == 0 && i < maxiterations);
+
+        UE_LOG(LogTemp, Warning, TEXT("%d"), i);
     }
     //Úsing radius
     else {
         //compare radiuses from functions and ranomize, set length of unit vector, until point is in bounds
         do {
             //less range for every iteration
-            float AlphaMinus = i * 0.01f;
+            float AlphaMinus = i * 0.005f;
             Point = UKismetMathLibrary::RandomUnitVector();
 
             //1 is toward maxradius, -1 is toward 0
-            float Alpha = FMath::FRandRange(FMath::Min(0, -1.0f - AlphaMinus), 1.0f - AlphaMinus);
+            Alpha = FMath::FRandRange(FMath::Min(0, -1.0f + AlphaMinus), 1.0f - AlphaMinus);
 
             //lerp to max or 0
             if (Alpha > 0)
@@ -356,7 +397,7 @@ FVector UVolumeInterpolator::GetRandomPointsInMeshBounds(UStaticMeshComponent* M
             Point += WorldTransform.GetLocation();
             i++;
             //point in polygon intersections always odd
-        } while (RayMeshIntersectionCount(Mesh, Point, FVector(100000, 0, 0), WorldTransform) % 2 == 0 && i < maxiterations);
+        } while (RayMeshIntersectionCount(Mesh, Point, FVector(100000, 0, 0), WorldTransform) % 2 == 0);//&& i < maxiterations);
         outAvgRadius = AvgRadius;
         outMaxRadius = MaxRadius;
 
