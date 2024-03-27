@@ -121,21 +121,38 @@ FOrientedBox ConvertFrom3f(UE::Geometry::FOrientedBox3f InBox) {
 
 //TODO call in start
 //this should not be recalculated during runtime
-void GetSmallestBoundingShape(const FTransform WorldTransform, TArray<FVector> Verts, float& OutRadius , FOrientedBox& OutBox, bool& BoxIsSmallest) {
+void UVolumeInterpolator::GetSmallestBoundingShape(const FTransform WT, TArray<FVector> Verts, float& OutRadius , bool& BoxIsSmallest) {
+
+
+
+
+    //  WHERE IN THE FUCK DOES LARGEST RADIUS GO FROM 70 TO FUCKONG 1777900
     UE::Geometry::TMinVolumeBox3<float> box;
 
+    Vertecies = Verts;
+
+
     TFunctionRef<FVector3f(int32)> GetVertexInWorldSpace =
-        [Verts,WorldTransform](int32 i) {
+        [Verts,WT](int32 i) {
 
         FVector V  = Verts[FMath::Clamp(i, 0, Verts.Num() - 1)];
-        UCommonFunctions::TransformVector(V, WorldTransform);
+        UCommonFunctions::TransformVector(V, WT);
 
         return (FVector3f)V;
         };
 
     //get smallest boundingbox
     UE::Geometry::FOrientedBox3f OBox;
-    if (box.Solve(Verts.Num(), GetVertexInWorldSpace, true)) {
+
+    //Solve is somewhat unreliable
+    int i = 0;
+    int maxTries = 10;
+    do {
+        box.Solve(Verts.Num(), GetVertexInWorldSpace, true);
+        i++;
+    } while (i < maxTries || !box.IsSolutionAvailable());
+
+    if (box.IsSolutionAvailable()) {
         box.GetResult(OBox);
     }
     else
@@ -145,43 +162,57 @@ void GetSmallestBoundingShape(const FTransform WorldTransform, TArray<FVector> V
         BoxIsSmallest = false;
         //return SphereData
         //largest radius is smallest boundingbox
-        float LargestRadius = 0.f;
+        float LRadius = 0.f;
         for (FVector& vert : Verts) {
             FVector V = vert;
-            UCommonFunctions::TransformVector(V, WorldTransform);
-            LargestRadius = FMath::Max(V.Length(), LargestRadius);
+            UCommonFunctions::TransformVector(V, WT);
+            //UCommonFunctions::TransformVector(V, WorldTransform);
+            UKismetSystemLibrary::DrawDebugPoint(GetWorld(), V, 5.f, FLinearColor::White, 1.f);
+            LRadius = FMath::Max((V-WT.GetLocation()).Length(), LRadius);
         }
-       OutRadius = LargestRadius;
+
+       BoxvolumeIsSmallest = BoxIsSmallest;
+       OutRadius = LRadius;
+       LargestRadius = LRadius;
+
 
         return;
     }
     //TODO make inlinefunc
     //largest radius is smallest bounding
-    float LargestRadius = 0.f;
+    float LRadius = 0.f;
     for (FVector& vert : Verts) {
         FVector V = vert;
-        UCommonFunctions::TransformVector(V, WorldTransform);
-        LargestRadius = FMath::Max(V.Length(), LargestRadius);
+        UCommonFunctions::TransformVector(V, WT);
+        //UCommonFunctions::TransformVector(V, WorldTransform);
+        UKismetSystemLibrary::DrawDebugPoint(GetWorld(), V, 5.f, FLinearColor::White, 1.f);
+        LRadius = FMath::Max((V-WT.GetLocation()).Length(), LRadius);
     }
 
+    LargestRadius = LRadius;
+
+    float boxVol = OBox.Volume();
+    float radVol = ((4 / 3) * UKismetMathLibrary::GetPI() * FMath::Cube(LRadius));
     //compare volumes
-    if (OBox.Volume() > ((4 / 3) * UKismetMathLibrary::GetPI() * FMath::Cube(LargestRadius))) {
+    if (OBox.Volume() > ((4 / 3) * UKismetMathLibrary::GetPI() * FMath::Cube(LRadius))) {
         BoxIsSmallest = false;
-        OutRadius = LargestRadius;
+        OutRadius = LRadius;
+
+        BoxvolumeIsSmallest = BoxIsSmallest;
+
         return;
     }
 
     BoxIsSmallest = true;
 
-    //TODO test wether this scales with objectscale
-    //TODO test if rotationdata get translated
 
-    OutBox = ConvertFrom3f(OBox);
+    OrientedBox = ConvertFrom3f(OBox);
+    BoxvolumeIsSmallest = BoxIsSmallest;
 
     return;
 }
-void GetDataFromVerticies(UStaticMeshComponent* Mesh, const FTransform WorldTransform, TArray<FVector>& Verts, FJsonSerializableArrayInt& TriangleIndexes, TArray<FVector>& Normals,
-    float& OutAvgRadiusToCenter, float& OutMaxRadiusToCenter, bool& bBoxIsSmallestBoundingShape, FOrientedBox& OutMaxBoxBounds) {
+void UVolumeInterpolator::GetDataFromVerticies(UStaticMeshComponent* Mesh, const FTransform WT, TArray<FVector>& Verts, FJsonSerializableArrayInt& TriangleIndexes, TArray<FVector>& Normals,
+    float& OutAvgRadiusToCenter, float& OutMaxRadiusToCenter, bool& bBoxIsSmallestBoundingShape) {
 
     OutMaxRadiusToCenter = 0;
     OutAvgRadiusToCenter = 0;
@@ -189,7 +220,6 @@ void GetDataFromVerticies(UStaticMeshComponent* Mesh, const FTransform WorldTran
     TArray<FVector2D> UV;
     TArray<FProcMeshTangent> Tangents;
     UKismetProceduralMeshLibrary::GetSectionFromStaticMesh(Mesh->GetStaticMesh(), 0, 0, Verts, TriangleIndexes, Normals, UV, Tangents);
-
     float MagnitudeValues = 0;
     float Radius = 0;
 
@@ -198,29 +228,22 @@ void GetDataFromVerticies(UStaticMeshComponent* Mesh, const FTransform WorldTran
 
     //REPLACE FUNCTION WITH VARIABLES SET FROM START
     //verts are localspace
-    GetSmallestBoundingShape(WorldTransform, Verts, Radius, Box ,bBoxIsSmallestBoundingShape);
+    UVolumeInterpolator::GetSmallestBoundingShape(WT, Verts, Radius ,bBoxIsSmallestBoundingShape);
+    UE_LOG(LogTemp, Warning, TEXT("%d"), Radius);
 
     //Randomize point using radius or box depening on smallest error margin 
     if (bBoxIsSmallestBoundingShape) {
-
-        OutMaxBoxBounds = Box;
         return;
     }
     else {
-        //iterate for avarageradius
+        //find avarageradius
         for (FVector& vert : Verts) {
 
-            UKismetSystemLibrary::DrawDebugPoint(Mesh, vert, 3.f, FLinearColor::Blue, 5.f);
+            UCommonFunctions::TransformVector(vert, WT);
+            //UKismetSystemLibrary::DrawDebugPoint(Mesh, vert, 3.f, FLinearColor::Red, 5.f
 
-            UCommonFunctions::TransformVector(vert, WorldTransform);
-            UKismetSystemLibrary::DrawDebugPoint(Mesh, vert, 3.f, FLinearColor::Red, 5.f);
-
-            //I think Minimum radius in reduntant since the testRadius will shrink towards zero
-
-            //meassure length and add to total sum
-            float Magnitude = (vert - WorldTransform.GetLocation()).Length();
+            float Magnitude = (vert - WT.GetLocation()).Length();
             MagnitudeValues += Magnitude;
-
         }
         if (Verts.Num() <= 0) {
             UE_LOG(LogTemp, Warning, TEXT("Verticies Array is 0"));
@@ -232,61 +255,72 @@ void GetDataFromVerticies(UStaticMeshComponent* Mesh, const FTransform WorldTran
         OutMaxRadiusToCenter = Radius;
         OutMaxRadiusToCenter;
     }
-
     return;
 }
-int UVolumeInterpolator::RayMeshIntersectionCount(UStaticMeshComponent* Mesh, FVector RayStart, FVector RayVector, const FTransform WorldTransform)
+int UVolumeInterpolator::RayMeshIntersectionCount(UStaticMeshComponent* Mesh, FVector RayStart, FVector RayVector, const FTransform WT, TArray<FVector>& OutIntersectionPoints)
 {
-
+    constexpr float ep = std::numeric_limits<float>::epsilon();
     int LoopIndex = 0;
     int Intersections = 0;
-    FJsonSerializableArrayInt Triangles;
+
+    FJsonSerializableArrayInt TriangleIndecies;
     TArray<FVector> MeshVerticies;
     TArray<FVector> Normals;
 
+    //unused
     TArray<FVector2D> UV;
     TArray<FProcMeshTangent> Tangents;
-    UKismetProceduralMeshLibrary::GetSectionFromStaticMesh(Mesh->GetStaticMesh(), 0, 0, MeshVerticies, Triangles, Normals, UV, Tangents);
+
+    UKismetProceduralMeshLibrary::GetSectionFromStaticMesh(Mesh->GetStaticMesh(), 0, 0, MeshVerticies, TriangleIndecies, Normals, UV, Tangents);
+
+    FVector IntersectionPoint;
+    OutIntersectionPoints.Empty();
 
     //iterate triangles
-    while (LoopIndex < Triangles.Num() - 2) {
+    while (LoopIndex < TriangleIndecies.Num() - 2) {
 
         TArray<FVector> TriangleToRayCheck;
 
-        for (int8 TriangleVertex = 0; TriangleVertex < 3; TriangleVertex++)
+        for (int8 VertIndex = 0; VertIndex < 3; VertIndex++)
         {
-            //somethings incorrect with the indexes here pos is need to convert from localspace to worldspace, vertex points are relative to world origin i think
-            FVector WorldSpaceNormal = ((Normals[Triangles[LoopIndex + TriangleVertex]]));
-            //UCommonFunctions::TransformVector(WorldSpaceNormal, WorldTransform);
+            FVector WorldSpaceNormal = ((Normals[TriangleIndecies[LoopIndex + VertIndex]]));
+            UCommonFunctions::TransformVector(WorldSpaceNormal, WT);
             double dotPr = UKismetMathLibrary::Dot_VectorVector(RayVector, WorldSpaceNormal);
 
-            //triangle cant be intersected aka angle is 90 deg
-            if (dotPr == 0)
+            //triangle cant be intersected
+            if (FMath::Abs(dotPr) < ep)
                 break;
 
-            FVector WorldSpaceVertex = (MeshVerticies[Triangles[LoopIndex + TriangleVertex]]);
-
-            UCommonFunctions::TransformVector(WorldSpaceVertex, WorldTransform);
-
+            FVector WorldSpaceVertex = (MeshVerticies[TriangleIndecies[LoopIndex + VertIndex]]);
+            UCommonFunctions::TransformVector(WorldSpaceVertex, WT);
             TriangleToRayCheck.Add(WorldSpaceVertex);
         }
 
         if (TriangleToRayCheck.Num() == 3) {
 
-            FVector IntersectionPoint;
-            if (RayIntersectsTriangle(RayStart, RayVector, TriangleToRayCheck, IntersectionPoint))
-                Intersections++;
+            if (RayIntersectsTriangle(RayStart, RayVector, TriangleToRayCheck, IntersectionPoint)) {
 
+                Intersections++; 
+                OutIntersectionPoints.Add(IntersectionPoint);
+            
+                //Draw checked triangle
+              /*  FLinearColor r = FLinearColor::MakeRandomColor();
+
+                UKismetSystemLibrary::DrawDebugLine(GetWorld(), TriangleToRayCheck[0], TriangleToRayCheck[1],  r, 4.f, 1.f);
+                UKismetSystemLibrary::DrawDebugLine(GetWorld(), TriangleToRayCheck[0], TriangleToRayCheck[2],  r, 4.f, 1.f);
+                UKismetSystemLibrary::DrawDebugLine(GetWorld(), TriangleToRayCheck[1], TriangleToRayCheck[2],  r, 4.f, 1.f);
+                UKismetSystemLibrary::DrawDebugPoint(GetWorld(), IntersectionPoint, 4.f, r, 5.f);*/
+            }
         }
-        TriangleToRayCheck.Empty();
 
-        LoopIndex++;
+        TriangleToRayCheck.Empty();
+        LoopIndex+=3;
     }
 
     return Intersections;
 }
 
-//literally stolen from wikipedia, Möller Trumbore alg
+//Möller Trumbore alg
 bool UVolumeInterpolator::RayIntersectsTriangle(FVector RayOrigin, FVector RayVector, const TArray<FVector>Triangle, FVector& OutIntersectionPoint)
 {
     constexpr float ep = std::numeric_limits<float>::epsilon();
@@ -328,84 +362,122 @@ bool UVolumeInterpolator::RayIntersectsTriangle(FVector RayOrigin, FVector RayVe
         return false;
 }
 
-FVector UVolumeInterpolator::GetRandomPointsInMeshBounds(UStaticMeshComponent* Mesh, const FTransform WorldTransform, float& outAvgRadius, float& outMaxRadius, bool& OutTryBox)
+FVector UVolumeInterpolator::GetRandomPointsInMeshBounds(UStaticMeshComponent* Mesh, const FTransform WT, float& OutAvgRadius, float& OutMaxRadius, bool& OutTryBox)
 {
-    float AvgRadius, MaxRadius;
-    FOrientedBox BoundingBox;
-    bool bBoxBounds = false;
-
-    TArray<FVector> Verts;
     FJsonSerializableArrayInt Triangles;
     TArray<FVector> Normals;
+    FOrientedBox BoundingBox = OrientedBox;
 
-    //calculate radiuses or boundingbox for randomizing the point with the least margin for error, normal distrubution at the avarageradius
-    //save vertex data for point in polygon alg
-    GetDataFromVerticies(Mesh, WorldTransform, Verts, Triangles, Normals, AvgRadius, MaxRadius, bBoxBounds, BoundingBox);
-
-    //Generate random point in boundingsphere
-    FVector Point;// = WorldTransform.GetLocation();
+    FVector Point;
+    TArray<FVector> IntersectionPoints;
     int maxiterations = 1000;
     int i = 0;
-    OutTryBox = bBoxBounds;
 
     //Spherebounds were bigger than Boxbounds, use box
-    if (bBoxBounds) {
-
-        
-
+    if (BoxvolumeIsSmallest) {
+         DrawOrientedBox(OrientedBox, Mesh, FColor::Green, .1f, 3.f);
         do
         {
-            //less range for every iteration´, after 100 i alpha is always .5f
-            float AlphaMinus = i * 0.005f;
-            //get random xyz val from box
             Point = BoundingBox.Center;
             FVector AddVector = FVector::Zero();
-        /*    float r1 = FMath::FRandRange(0.0f, 1.0f);
-            float r2 = FMath::FRandRange(0 + AlphaMinus, 1 - AlphaMinus);
-            float r3 = FMath::FRandRange(0 + AlphaMinus, 1 - AlphaMinus);*/
 
-
-            AddVector += BoundingBox.AxisX * FMath::Lerp(BoundingBox.ExtentX* -.5f, BoundingBox.ExtentX*.5f, FMath::FRandRange(0 + AlphaMinus, 1 - AlphaMinus));
-            AddVector += BoundingBox.AxisY * FMath::Lerp(BoundingBox.ExtentY* -.5f, BoundingBox.ExtentY*.5f, FMath::FRandRange(0 + AlphaMinus, 1 - AlphaMinus));
-            AddVector += BoundingBox.AxisZ * FMath::Lerp(BoundingBox.ExtentZ* -.5f, BoundingBox.ExtentZ*.5f,  FMath::FRandRange(0 + AlphaMinus, 1 - AlphaMinus));
+            AddVector += BoundingBox.AxisX * FMath::Lerp(BoundingBox.ExtentX * -.5f, BoundingBox.ExtentX * .5f, FMath::FRand());
+            AddVector += BoundingBox.AxisY * FMath::Lerp(BoundingBox.ExtentY * -.5f, BoundingBox.ExtentY * .5f, FMath::FRand());
+            AddVector += BoundingBox.AxisZ * FMath::Lerp(BoundingBox.ExtentZ * -.5f, BoundingBox.ExtentZ * .5f, FMath::FRand());
 
             Point += AddVector;
 
             i++;
         } //point in polygon intersections always odd
-        while (RayMeshIntersectionCount(Mesh, Point, FVector(100000, 0, 0), WorldTransform) % 2 == 0 && i < maxiterations);
+        while (RayMeshIntersectionCount(Mesh, Point, FVector(1, 0, 1), WT, IntersectionPoints) % 2 == 0 && i < maxiterations);
 
-        UE_LOG(LogTemp, Warning, TEXT("%d"), i);
+
+
+        //debug
+        /*for (FVector V : IntersectionPoints)
+        {
+            UKismetSystemLibrary::DrawDebugPoint(GetWorld(), V, 5.f, FLinearColor::White, 3.f);
+        }
+        UE_LOG(LogTemp, Warning, TEXT("%d"), IntersectionPoints.Num());
+        UE_LOG(LogTemp, Warning, TEXT("%d"), i);*/
     }
     //Úsing radius
     else {
-        //compare radiuses from functions and ranomize, set length of unit vector, until point is in bounds
         do {
             //less range for every iteration
-            float AlphaMinus = i * 0.005f;
+            float AlphaMinus = FMath::Min((i * 0.005f), .5f);
             Point = UKismetMathLibrary::RandomUnitVector();
 
             //1 is toward maxradius, -1 is toward 0
             Alpha = FMath::FRandRange(FMath::Min(0, -1.0f + AlphaMinus), 1.0f - AlphaMinus);
 
-            //lerp to max or 0
             if (Alpha > 0)
-                Point *= FMath::Lerp(AvgRadius, MaxRadius, Alpha);
+                Point *= FMath::Lerp(AvarageRadius, LargestRadius, Alpha);
             else
-                Point *= FMath::Lerp(0, AvgRadius, FMath::Abs(Alpha));
+                Point *= FMath::Lerp(0, AvarageRadius, FMath::Abs(Alpha));
 
-            Point += WorldTransform.GetLocation();
+            UCommonFunctions::TransformVector(Point, WT);
+     
             i++;
-            //point in polygon intersections always odd
-        } while (RayMeshIntersectionCount(Mesh, Point, FVector(100000, 0, 0), WorldTransform) % 2 == 0);//&& i < maxiterations);
-        outAvgRadius = AvgRadius;
-        outMaxRadius = MaxRadius;
+        } //point in polygon intersections always odd
+        while (RayMeshIntersectionCount(Mesh, Point, FVector(1, 0, 1), WT, IntersectionPoints) % 2 == 0 && i < maxiterations);
 
+
+        //debug
+        /*/for (FVector V : IntersectionPoints)
+        {
+            UKismetSystemLibrary::DrawDebugPoint(GetWorld(), V, 5.f, FLinearColor::White, 3.f);
+        }
+        UE_LOG(LogTemp, Warning, TEXT("%d"), i);
+        */
     }
 
+    OutAvgRadius = AvarageRadius;
+    OutMaxRadius = LargestRadius;
+    OutTryBox = BoxvolumeIsSmallest;
 
     return Point;
 }
+void UVolumeInterpolator::Init(UStaticMeshComponent* Mesh, const FTransform WT)
+{
+    FJsonSerializableArrayInt Triangles;
+    TArray<FVector> Normals;
+
+    //save vertex data for point in polygon alg
+    GetDataFromVerticies(Mesh, WT, Vertecies, Triangles, Normals, AvarageRadius, LargestRadius, BoxvolumeIsSmallest);
+}
+void UVolumeInterpolator::DrawOrientedBox(FOrientedBox& Box, UObject* ContextOb, FColor Color, float Duration, float Thickness) {
+        FVector Center = Box.Center;
+        FVector HalfAxisLengths(Box.ExtentX * .5f, Box.ExtentY * .5f, Box.ExtentZ * .5f);
+
+        FVector UnitVectorX = Box.AxisX;
+        FVector UnitVectorY = Box.AxisY;
+        FVector UnitVectorZ = Box.AxisZ;
+
+        FVector Corner1 = Center + HalfAxisLengths.X * UnitVectorX + HalfAxisLengths.Y * UnitVectorY + HalfAxisLengths.Z * UnitVectorZ;
+        FVector Corner2 = Center - HalfAxisLengths.X * UnitVectorX + HalfAxisLengths.Y * UnitVectorY + HalfAxisLengths.Z * UnitVectorZ;
+        FVector Corner3 = Center + HalfAxisLengths.X * UnitVectorX - HalfAxisLengths.Y * UnitVectorY + HalfAxisLengths.Z * UnitVectorZ;
+        FVector Corner4 = Center - HalfAxisLengths.X * UnitVectorX - HalfAxisLengths.Y * UnitVectorY + HalfAxisLengths.Z * UnitVectorZ;
+        FVector Corner5 = Center + HalfAxisLengths.X * UnitVectorX + HalfAxisLengths.Y * UnitVectorY - HalfAxisLengths.Z * UnitVectorZ;
+        FVector Corner6 = Center - HalfAxisLengths.X * UnitVectorX + HalfAxisLengths.Y * UnitVectorY - HalfAxisLengths.Z * UnitVectorZ;
+        FVector Corner7 = Center + HalfAxisLengths.X * UnitVectorX - HalfAxisLengths.Y * UnitVectorY - HalfAxisLengths.Z * UnitVectorZ;
+        FVector Corner8 = Center - HalfAxisLengths.X * UnitVectorX - HalfAxisLengths.Y * UnitVectorY - HalfAxisLengths.Z * UnitVectorZ;
+
+        // Draw lines between corners to form the box edges
+        DrawDebugLine(GetWorld(), Corner1, Corner2, Color, false, Duration);
+        DrawDebugLine(GetWorld(), Corner1, Corner3, Color, false, Duration);
+        DrawDebugLine(GetWorld(), Corner1, Corner5, Color, false, Duration);
+        DrawDebugLine(GetWorld(), Corner2, Corner4, Color, false, Duration);
+        DrawDebugLine(GetWorld(), Corner2, Corner6, Color, false, Duration);
+        DrawDebugLine(GetWorld(), Corner3, Corner4, Color, false, Duration);
+        DrawDebugLine(GetWorld(), Corner3, Corner7, Color, false, Duration);
+        DrawDebugLine(GetWorld(), Corner4, Corner8, Color, false, Duration);
+        DrawDebugLine(GetWorld(), Corner5, Corner6, Color, false, Duration);
+        DrawDebugLine(GetWorld(), Corner5, Corner7, Color, false, Duration);
+        DrawDebugLine(GetWorld(), Corner6, Corner8, Color, false, Duration);
+        DrawDebugLine(GetWorld(), Corner7, Corner8, Color, false, Duration);
+}
+
 
 
 
