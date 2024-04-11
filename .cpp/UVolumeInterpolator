@@ -3,8 +3,8 @@
 
 #include "VolumeInterpolator.h"
 #include "Components/BrushComponent.h"
-#include "CommonFunctions.h"
 
+#include <CommonVectorFunctionsBPLibrary.h>
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "KismetProceduralMeshLibrary.h"
@@ -13,6 +13,99 @@
 #include "MinVolumeBox3.h"
 #include "OrientedBoxTypes.h"
 
+using namespace UE::Geometry;
+
+// Sets default values for this component's properties
+UVolumeInterpolator::UVolumeInterpolator()
+{
+	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
+	// off to improve performance if you don't need them.
+	PrimaryComponentTick.bCanEverTick = true;
+
+	// ...
+}
+
+
+void UVolumeInterpolator::GenerateNewPoints(float MaxMovementLength,AVolume* SourceVolume, AVolume* TrackingVolume)
+{
+	if (SourceVolume == nullptr)
+		return;
+	if (TrackingVolume == nullptr)
+		return;
+
+	FBoxSphereBounds Bounds1 = TrackingVolume->GetBounds();
+	FBoxSphereBounds Bounds2 = SourceVolume->GetBounds();
+
+
+	//new startpoints
+	SourceStart = FMath::RandPointInBox(Bounds1.GetBox());
+	TrackStart = FMath::RandPointInBox(Bounds2.GetBox());
+
+	//new endpoints to interp to
+	SourceEnd = FMath::RandPointInBox(Bounds1.GetBox());
+	TrackEnd = FMath::RandPointInBox(Bounds2.GetBox());
+
+	StartRotation = UKismetMathLibrary::FindLookAtRotation(TrackStart, SourceStart).Quaternion();
+	StartDist = (SourceStart - TrackStart).Length();
+	EndDist = StartDist - FMath::FRandRange(-MaxMovementLength, MaxMovementLength);
+
+	TargetRotation = UKismetMathLibrary::FindLookAtRotation(TrackEnd, SourceEnd).Quaternion();
+
+
+    TransformedVertecies.Empty();
+}
+
+void UVolumeInterpolator::StartInterpolatePoints()
+{
+	DoInterp = true;
+	Alpha = 0;
+}
+
+void UVolumeInterpolator::TickInterpolate(float DeltaTime,float& outDist, FVector& CurrentLoc, FVector& TrackingPoint,FRotator& CurrentRot)
+{
+	
+	FMath::Clamp(Alpha += DeltaTime * InterpSpeed,0,1);
+
+	float newdist = FMath::Lerp(StartDist, EndDist, Alpha);
+
+	FRotator RefRot = FQuat::Slerp(StartRotation, TargetRotation, Alpha).Rotator();
+	TrackCurrent = UKismetMathLibrary::VLerp(TrackStart, TrackEnd, Alpha);
+    SourceCurrent = UCommonVectorFunctionsBPLibrary::LocationFromDistanceAndRotation(TrackCurrent, RefRot, newdist);
+
+	LookatRotation = UKismetMathLibrary::FindLookAtRotation(SourceCurrent, TrackCurrent);
+
+	outDist = newdist;
+	TrackingPoint = TrackCurrent;
+	CurrentRot = RefRot;
+	CurrentLoc = SourceCurrent;
+
+	if (Alpha >= 1) {
+		InterpCompletedEvent.Broadcast();
+		DoInterp = false;
+	}
+}
+
+// Called when the game starts
+void UVolumeInterpolator::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// ...
+	
+}
+
+
+// Called every frame
+void UVolumeInterpolator::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+
+	//if(DoInterp)
+	//	TickInterpolate(DeltaTime);
+
+}
 FOrientedBox ConvertFrom3f(UE::Geometry::FOrientedBox3f InBox) {
 
     FOrientedBox OutBox;
@@ -32,38 +125,37 @@ FOrientedBox ConvertFrom3f(UE::Geometry::FOrientedBox3f InBox) {
 
 }
 
-//TODO call in start
-//this should not be recalculated during runtime
-void UVolumeInterpolator::GetSmallestBoundingShape(const FTransform WT, TArray<FVector> Verts, float& OutRadius , bool& BoxIsSmallest) {
+void UVolumeInterpolator::GetSmallestBoundingShape(const FTransform WT, TArray<FVector> Verts, float& OutRadius , bool& BoxIsSmallest,int& outNumVertecies) {
 
-
-
-
-    //  WHERE IN THE FUCK DOES LARGEST RADIUS GO FROM 70 TO FUCKONG 1777900
-    UE::Geometry::TMinVolumeBox3<float> box;
+    TransformedVertecies.Empty();
+    TMinVolumeBox3<float> box;
 
     Vertecies = Verts;
 
+    int j = 0;
+    for (FVector V : Verts) {
+        TransformVector(V, WT, true, j);
+        j++;
+    }
 
     TFunctionRef<FVector3f(int32)> GetVertexInWorldSpace =
-        [Verts,WT](int32 i) {
+        [Verts,WT,this](int32 i) {
 
-        FVector V  = Verts[FMath::Clamp(i, 0, Verts.Num() - 1)];
-        UCommonFunctions::TransformVector(V, WT);
+        FVector V = TransformedVertecies[FMath::Clamp(i, 0, Verts.Num() - 1)];
 
         return (FVector3f)V;
         };
 
     //get smallest boundingbox
-    UE::Geometry::FOrientedBox3f OBox;
+    FOrientedBox3f OBox;
 
     //Solve is somewhat unreliable
     int i = 0;
     int maxTries = 10;
-    do {
-        box.Solve(Verts.Num(), GetVertexInWorldSpace, true);
+    box.Solve(Verts.Num(), GetVertexInWorldSpace, false);
+  /*  do {
         i++;
-    } while (i < maxTries || !box.IsSolutionAvailable());
+    } while (i < maxTries || !box.IsSolutionAvailable());*/
 
     if (box.IsSolutionAvailable()) {
         box.GetResult(OBox);
@@ -76,10 +168,9 @@ void UVolumeInterpolator::GetSmallestBoundingShape(const FTransform WT, TArray<F
         //return SphereData
         //largest radius is smallest boundingbox
         float LRadius = 0.f;
-        for (FVector& vert : Verts) {
+        for (FVector& vert : TransformedVertecies) {
             FVector V = vert;
-            UCommonFunctions::TransformVector(V, WT);
-            //UCommonFunctions::TransformVector(V, WorldTransform);
+           
             UKismetSystemLibrary::DrawDebugPoint(GetWorld(), V, 5.f, FLinearColor::White, 1.f);
             LRadius = FMath::Max((V-WT.GetLocation()).Length(), LRadius);
         }
@@ -87,17 +178,15 @@ void UVolumeInterpolator::GetSmallestBoundingShape(const FTransform WT, TArray<F
        BoxvolumeIsSmallest = BoxIsSmallest;
        OutRadius = LRadius;
        LargestRadius = LRadius;
-
+       outNumVertecies = TransformedVertecies.Num();
 
         return;
     }
-    //TODO make inlinefunc
     //largest radius is smallest bounding
     float LRadius = 0.f;
-    for (FVector& vert : Verts) {
+    for (FVector& vert : TransformedVertecies) {
         FVector V = vert;
-        UCommonFunctions::TransformVector(V, WT);
-        //UCommonFunctions::TransformVector(V, WorldTransform);
+        
         UKismetSystemLibrary::DrawDebugPoint(GetWorld(), V, 5.f, FLinearColor::White, 1.f);
         LRadius = FMath::Max((V-WT.GetLocation()).Length(), LRadius);
     }
@@ -132,16 +221,15 @@ void UVolumeInterpolator::GetDataFromVerticies(UStaticMeshComponent* Mesh, const
 
     TArray<FVector2D> UV;
     TArray<FProcMeshTangent> Tangents;
+    int outNum;
     UKismetProceduralMeshLibrary::GetSectionFromStaticMesh(Mesh->GetStaticMesh(), 0, 0, Verts, TriangleIndexes, Normals, UV, Tangents);
     float MagnitudeValues = 0;
     float Radius = 0;
 
     FOrientedBox Box;
 
-
-    //REPLACE FUNCTION WITH VARIABLES SET FROM START
     //verts are localspace
-    UVolumeInterpolator::GetSmallestBoundingShape(WT, Verts, Radius ,bBoxIsSmallestBoundingShape);
+    UVolumeInterpolator::GetSmallestBoundingShape(WT, Verts, Radius ,bBoxIsSmallestBoundingShape, outNum);
     UE_LOG(LogTemp, Warning, TEXT("%d"), Radius);
 
     //Randomize point using radius or box depening on smallest error margin 
@@ -150,9 +238,9 @@ void UVolumeInterpolator::GetDataFromVerticies(UStaticMeshComponent* Mesh, const
     }
     else {
         //find avarageradius
-        for (FVector& vert : Verts) {
+        for (FVector& vert : TransformedVertecies) {
 
-            UCommonFunctions::TransformVector(vert, WT);
+            
             //UKismetSystemLibrary::DrawDebugPoint(Mesh, vert, 3.f, FLinearColor::Red, 5.f
 
             float Magnitude = (vert - WT.GetLocation()).Length();
@@ -197,15 +285,14 @@ int UVolumeInterpolator::RayMeshIntersectionCount(UStaticMeshComponent* Mesh, FV
         for (int8 VertIndex = 0; VertIndex < 3; VertIndex++)
         {
             FVector WorldSpaceNormal = ((Normals[TriangleIndecies[LoopIndex + VertIndex]]));
-            UCommonFunctions::TransformVector(WorldSpaceNormal, WT);
+            TransformVector(WorldSpaceNormal, WT, false);
             double dotPr = UKismetMathLibrary::Dot_VectorVector(RayVector, WorldSpaceNormal);
 
             //triangle cant be intersected
             if (FMath::Abs(dotPr) < ep)
                 break;
 
-            FVector WorldSpaceVertex = (MeshVerticies[TriangleIndecies[LoopIndex + VertIndex]]);
-            UCommonFunctions::TransformVector(WorldSpaceVertex, WT);
+            FVector WorldSpaceVertex = TransformedVertecies[TriangleIndecies[LoopIndex + VertIndex]];
             TriangleToRayCheck.Add(WorldSpaceVertex);
         }
 
@@ -216,8 +303,11 @@ int UVolumeInterpolator::RayMeshIntersectionCount(UStaticMeshComponent* Mesh, FV
                 Intersections++; 
                 OutIntersectionPoints.Add(IntersectionPoint);
             
+                //Draw Ray 
+                /*UKismetSystemLibrary::DrawDebugLine(GetWorld(), RayStart, IntersectionPoint, FLinearColor::White, .5f, .1f);
+
                 //Draw checked triangle
-              /*  FLinearColor r = FLinearColor::MakeRandomColor();
+                FLinearColor r = FLinearColor::MakeRandomColor();
 
                 UKismetSystemLibrary::DrawDebugLine(GetWorld(), TriangleToRayCheck[0], TriangleToRayCheck[1],  r, 4.f, 1.f);
                 UKismetSystemLibrary::DrawDebugLine(GetWorld(), TriangleToRayCheck[0], TriangleToRayCheck[2],  r, 4.f, 1.f);
@@ -286,6 +376,12 @@ FVector UVolumeInterpolator::GetRandomPointsInMeshBounds(UStaticMeshComponent* M
     int maxiterations = 1000;
     int i = 0;
 
+    if (Vertecies.Num() > MAX_ALLOWED_VERTECIES) {
+
+        UE_LOG(LogTemp,Warning,TEXT("Vertecies of provided mesh exceeds maximim allowed count, aborting..."))
+        return FVector::Zero();
+    }
+
     //Spherebounds were bigger than Boxbounds, use box
     if (BoxvolumeIsSmallest) {
          DrawOrientedBox(OrientedBox, Mesh, FColor::Green, .1f, 3.f);
@@ -329,7 +425,7 @@ FVector UVolumeInterpolator::GetRandomPointsInMeshBounds(UStaticMeshComponent* M
             else
                 Point *= FMath::Lerp(0, AvarageRadius, FMath::Abs(Alpha));
 
-            UCommonFunctions::TransformVector(Point, WT);
+            TransformVector(Point, WT,false);
      
             i++;
         } //point in polygon intersections always odd
