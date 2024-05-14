@@ -68,6 +68,9 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "VectorFunctions")
 	static FRotator RSphericalInterp(FRotator Current, FRotator Target, float DeltaTime, float Speed, UPARAM(ref)float& Alpha);
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "VectorFunctions")
+	static FVector ClampVectorInDirection(FVector Input, FVector Scaler);
+
 	UFUNCTION(BlueprintCallable, Category = "VectorFunctions")
 	static void TransformVector(UPARAM(ref)FVector& V, const FTransform T);
 };

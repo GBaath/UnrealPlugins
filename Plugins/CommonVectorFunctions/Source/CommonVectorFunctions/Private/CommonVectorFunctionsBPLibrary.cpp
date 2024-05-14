@@ -240,6 +240,24 @@ FRotator UCommonVectorFunctionsBPLibrary::RSphericalInterp(FRotator Current, FRo
     return Delta.Rotator();
 
 }
+FVector UCommonVectorFunctionsBPLibrary::ClampVectorInDirection(FVector Input, FVector Scaler)
+{
+    Scaler.X = FMath::Clamp(Scaler.X, -1, 1);
+    Scaler.Y = FMath::Clamp(Scaler.Y, -1, 1);
+    Scaler.Z = FMath::Clamp(Scaler.Z, -1, 1);
+
+    float scaleX, scaleY, scaleZ;
+
+    //vectors are pointing in same xyz direction from 0 
+    scaleX = Input.X * Scaler.X > 0;
+    scaleY = Input.Y * Scaler.Y > 0;
+    scaleZ = Input.Z * Scaler.Z > 0;
+
+    FVector retVec(Input.X - scaleX * FMath::Abs(Input.X) * Scaler.X, Input.Y - scaleY * FMath::Abs(Input.Y) * Scaler.Y, Input.Z - scaleZ * FMath::Abs(Input.Z) * Scaler.Z);
+
+
+    return retVec;
+}
 void UCommonVectorFunctionsBPLibrary::TransformVector(UPARAM(ref)FVector& V, const FTransform T)
 {
     UE_LOG(LogTemp, Warning, TEXT("T Call"));

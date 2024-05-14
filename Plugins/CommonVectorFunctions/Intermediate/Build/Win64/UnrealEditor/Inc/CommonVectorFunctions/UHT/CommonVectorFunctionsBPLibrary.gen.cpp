@@ -27,6 +27,15 @@ void EmptyLinkFunctionForGeneratedCodeCommonVectorFunctionsBPLibrary() {}
 		UCommonVectorFunctionsBPLibrary::TransformVector(Z_Param_Out_V,Z_Param_T);
 		P_NATIVE_END;
 	}
+	DEFINE_FUNCTION(UCommonVectorFunctionsBPLibrary::execClampVectorInDirection)
+	{
+		P_GET_STRUCT(FVector,Z_Param_Input);
+		P_GET_STRUCT(FVector,Z_Param_Scaler);
+		P_FINISH;
+		P_NATIVE_BEGIN;
+		*(FVector*)Z_Param__Result=UCommonVectorFunctionsBPLibrary::ClampVectorInDirection(Z_Param_Input,Z_Param_Scaler);
+		P_NATIVE_END;
+	}
 	DEFINE_FUNCTION(UCommonVectorFunctionsBPLibrary::execRSphericalInterp)
 	{
 		P_GET_STRUCT(FRotator,Z_Param_Current);
@@ -194,6 +203,7 @@ void EmptyLinkFunctionForGeneratedCodeCommonVectorFunctionsBPLibrary() {}
 			{ "ClampRotation", &UCommonVectorFunctionsBPLibrary::execClampRotation },
 			{ "ClampRotationWithRadius", &UCommonVectorFunctionsBPLibrary::execClampRotationWithRadius },
 			{ "ClampToEllipsoid", &UCommonVectorFunctionsBPLibrary::execClampToEllipsoid },
+			{ "ClampVectorInDirection", &UCommonVectorFunctionsBPLibrary::execClampVectorInDirection },
 			{ "ClampVectorMax", &UCommonVectorFunctionsBPLibrary::execClampVectorMax },
 			{ "ClampVectorMin", &UCommonVectorFunctionsBPLibrary::execClampVectorMin },
 			{ "FastClampVectorAxes", &UCommonVectorFunctionsBPLibrary::execFastClampVectorAxes },
@@ -356,6 +366,49 @@ void EmptyLinkFunctionForGeneratedCodeCommonVectorFunctionsBPLibrary() {}
 		if (!ReturnFunction)
 		{
 			UECodeGen_Private::ConstructUFunction(&ReturnFunction, Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampToEllipsoid_Statics::FuncParams);
+		}
+		return ReturnFunction;
+	}
+	struct Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics
+	{
+		struct CommonVectorFunctionsBPLibrary_eventClampVectorInDirection_Parms
+		{
+			FVector Input;
+			FVector Scaler;
+			FVector ReturnValue;
+		};
+		static const UECodeGen_Private::FStructPropertyParams NewProp_Input;
+		static const UECodeGen_Private::FStructPropertyParams NewProp_Scaler;
+		static const UECodeGen_Private::FStructPropertyParams NewProp_ReturnValue;
+		static const UECodeGen_Private::FPropertyParamsBase* const PropPointers[];
+#if WITH_METADATA
+		static const UECodeGen_Private::FMetaDataPairParam Function_MetaDataParams[];
+#endif
+		static const UECodeGen_Private::FFunctionParams FuncParams;
+	};
+	const UECodeGen_Private::FStructPropertyParams Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::NewProp_Input = { "Input", nullptr, (EPropertyFlags)0x0010000000000080, UECodeGen_Private::EPropertyGenFlags::Struct, RF_Public|RF_Transient|RF_MarkAsNative, nullptr, nullptr, 1, STRUCT_OFFSET(CommonVectorFunctionsBPLibrary_eventClampVectorInDirection_Parms, Input), Z_Construct_UScriptStruct_FVector, METADATA_PARAMS(0, nullptr) };
+	const UECodeGen_Private::FStructPropertyParams Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::NewProp_Scaler = { "Scaler", nullptr, (EPropertyFlags)0x0010000000000080, UECodeGen_Private::EPropertyGenFlags::Struct, RF_Public|RF_Transient|RF_MarkAsNative, nullptr, nullptr, 1, STRUCT_OFFSET(CommonVectorFunctionsBPLibrary_eventClampVectorInDirection_Parms, Scaler), Z_Construct_UScriptStruct_FVector, METADATA_PARAMS(0, nullptr) };
+	const UECodeGen_Private::FStructPropertyParams Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::NewProp_ReturnValue = { "ReturnValue", nullptr, (EPropertyFlags)0x0010000000000580, UECodeGen_Private::EPropertyGenFlags::Struct, RF_Public|RF_Transient|RF_MarkAsNative, nullptr, nullptr, 1, STRUCT_OFFSET(CommonVectorFunctionsBPLibrary_eventClampVectorInDirection_Parms, ReturnValue), Z_Construct_UScriptStruct_FVector, METADATA_PARAMS(0, nullptr) };
+	const UECodeGen_Private::FPropertyParamsBase* const Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::PropPointers[] = {
+		(const UECodeGen_Private::FPropertyParamsBase*)&Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::NewProp_Input,
+		(const UECodeGen_Private::FPropertyParamsBase*)&Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::NewProp_Scaler,
+		(const UECodeGen_Private::FPropertyParamsBase*)&Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::NewProp_ReturnValue,
+	};
+#if WITH_METADATA
+	const UECodeGen_Private::FMetaDataPairParam Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::Function_MetaDataParams[] = {
+		{ "Category", "VectorFunctions" },
+		{ "ModuleRelativePath", "Public/CommonVectorFunctionsBPLibrary.h" },
+	};
+#endif
+	const UECodeGen_Private::FFunctionParams Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::FuncParams = { (UObject*(*)())Z_Construct_UClass_UCommonVectorFunctionsBPLibrary, nullptr, "ClampVectorInDirection", nullptr, nullptr, Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::PropPointers, UE_ARRAY_COUNT(Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::PropPointers), sizeof(Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::CommonVectorFunctionsBPLibrary_eventClampVectorInDirection_Parms), RF_Public|RF_Transient|RF_MarkAsNative, (EFunctionFlags)0x14822401, 0, 0, METADATA_PARAMS(UE_ARRAY_COUNT(Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::Function_MetaDataParams), Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::Function_MetaDataParams) };
+	static_assert(UE_ARRAY_COUNT(Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::PropPointers) < 2048);
+	static_assert(sizeof(Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::CommonVectorFunctionsBPLibrary_eventClampVectorInDirection_Parms) < MAX_uint16);
+	UFunction* Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection()
+	{
+		static UFunction* ReturnFunction = nullptr;
+		if (!ReturnFunction)
+		{
+			UECodeGen_Private::ConstructUFunction(&ReturnFunction, Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection_Statics::FuncParams);
 		}
 		return ReturnFunction;
 	}
@@ -1033,6 +1086,7 @@ void EmptyLinkFunctionForGeneratedCodeCommonVectorFunctionsBPLibrary() {}
 		{ &Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampRotation, "ClampRotation" }, // 2658420287
 		{ &Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampRotationWithRadius, "ClampRotationWithRadius" }, // 1031458361
 		{ &Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampToEllipsoid, "ClampToEllipsoid" }, // 2246322820
+		{ &Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorInDirection, "ClampVectorInDirection" }, // 273558096
 		{ &Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorMax, "ClampVectorMax" }, // 3308699583
 		{ &Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorMin, "ClampVectorMin" }, // 3218081227
 		{ &Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_FastClampVectorAxes, "FastClampVectorAxes" }, // 1029035288
@@ -1089,15 +1143,15 @@ void EmptyLinkFunctionForGeneratedCodeCommonVectorFunctionsBPLibrary() {}
 	UCommonVectorFunctionsBPLibrary::UCommonVectorFunctionsBPLibrary(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer) {}
 	DEFINE_VTABLE_PTR_HELPER_CTOR(UCommonVectorFunctionsBPLibrary);
 	UCommonVectorFunctionsBPLibrary::~UCommonVectorFunctionsBPLibrary() {}
-	struct Z_CompiledInDeferFile_FID_Users_gustav_baath_Build_PluginBuild_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics
+	struct Z_CompiledInDeferFile_FID_Users_gustav_baath_Documents_Unreal_Projects_Plugin_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics
 	{
 		static const FClassRegisterCompiledInInfo ClassInfo[];
 	};
-	const FClassRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Users_gustav_baath_Build_PluginBuild_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics::ClassInfo[] = {
-		{ Z_Construct_UClass_UCommonVectorFunctionsBPLibrary, UCommonVectorFunctionsBPLibrary::StaticClass, TEXT("UCommonVectorFunctionsBPLibrary"), &Z_Registration_Info_UClass_UCommonVectorFunctionsBPLibrary, CONSTRUCT_RELOAD_VERSION_INFO(FClassReloadVersionInfo, sizeof(UCommonVectorFunctionsBPLibrary), 884667347U) },
+	const FClassRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Users_gustav_baath_Documents_Unreal_Projects_Plugin_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics::ClassInfo[] = {
+		{ Z_Construct_UClass_UCommonVectorFunctionsBPLibrary, UCommonVectorFunctionsBPLibrary::StaticClass, TEXT("UCommonVectorFunctionsBPLibrary"), &Z_Registration_Info_UClass_UCommonVectorFunctionsBPLibrary, CONSTRUCT_RELOAD_VERSION_INFO(FClassReloadVersionInfo, sizeof(UCommonVectorFunctionsBPLibrary), 298108055U) },
 	};
-	static FRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Users_gustav_baath_Build_PluginBuild_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_230557372(TEXT("/Script/CommonVectorFunctions"),
-		Z_CompiledInDeferFile_FID_Users_gustav_baath_Build_PluginBuild_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics::ClassInfo, UE_ARRAY_COUNT(Z_CompiledInDeferFile_FID_Users_gustav_baath_Build_PluginBuild_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics::ClassInfo),
+	static FRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Users_gustav_baath_Documents_Unreal_Projects_Plugin_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_2323719818(TEXT("/Script/CommonVectorFunctions"),
+		Z_CompiledInDeferFile_FID_Users_gustav_baath_Documents_Unreal_Projects_Plugin_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics::ClassInfo, UE_ARRAY_COUNT(Z_CompiledInDeferFile_FID_Users_gustav_baath_Documents_Unreal_Projects_Plugin_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics::ClassInfo),
 		nullptr, 0,
 		nullptr, 0);
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
