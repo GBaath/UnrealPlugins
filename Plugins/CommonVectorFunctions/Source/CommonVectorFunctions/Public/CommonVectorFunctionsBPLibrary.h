@@ -71,6 +71,9 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "VectorFunctions")
 	static FVector ClampVectorInDirection(FVector Input, FVector Scaler);
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "VectorFunctions")
+	static float GetDistanceAlphaFromBoxEdge(FVector Point, FVector Center, FVector Extent, float InnerOuterEdgeDistance);
+
 	UFUNCTION(BlueprintCallable, Category = "VectorFunctions")
 	static void TransformVector(UPARAM(ref)FVector& V, const FTransform T);
 };

@@ -27,6 +27,17 @@ void EmptyLinkFunctionForGeneratedCodeCommonVectorFunctionsBPLibrary() {}
 		UCommonVectorFunctionsBPLibrary::TransformVector(Z_Param_Out_V,Z_Param_T);
 		P_NATIVE_END;
 	}
+	DEFINE_FUNCTION(UCommonVectorFunctionsBPLibrary::execGetDistanceAlphaFromBoxEdge)
+	{
+		P_GET_STRUCT(FVector,Z_Param_Point);
+		P_GET_STRUCT(FVector,Z_Param_Center);
+		P_GET_STRUCT(FVector,Z_Param_Extent);
+		P_GET_PROPERTY(FFloatProperty,Z_Param_InnerOuterEdgeDistance);
+		P_FINISH;
+		P_NATIVE_BEGIN;
+		*(float*)Z_Param__Result=UCommonVectorFunctionsBPLibrary::GetDistanceAlphaFromBoxEdge(Z_Param_Point,Z_Param_Center,Z_Param_Extent,Z_Param_InnerOuterEdgeDistance);
+		P_NATIVE_END;
+	}
 	DEFINE_FUNCTION(UCommonVectorFunctionsBPLibrary::execClampVectorInDirection)
 	{
 		P_GET_STRUCT(FVector,Z_Param_Input);
@@ -207,6 +218,7 @@ void EmptyLinkFunctionForGeneratedCodeCommonVectorFunctionsBPLibrary() {}
 			{ "ClampVectorMax", &UCommonVectorFunctionsBPLibrary::execClampVectorMax },
 			{ "ClampVectorMin", &UCommonVectorFunctionsBPLibrary::execClampVectorMin },
 			{ "FastClampVectorAxes", &UCommonVectorFunctionsBPLibrary::execFastClampVectorAxes },
+			{ "GetDistanceAlphaFromBoxEdge", &UCommonVectorFunctionsBPLibrary::execGetDistanceAlphaFromBoxEdge },
 			{ "InterpolateActor", &UCommonVectorFunctionsBPLibrary::execInterpolateActor },
 			{ "LocationFromDistanceAndRotation", &UCommonVectorFunctionsBPLibrary::execLocationFromDistanceAndRotation },
 			{ "NormalizeRotator", &UCommonVectorFunctionsBPLibrary::execNormalizeRotator },
@@ -544,6 +556,57 @@ void EmptyLinkFunctionForGeneratedCodeCommonVectorFunctionsBPLibrary() {}
 		if (!ReturnFunction)
 		{
 			UECodeGen_Private::ConstructUFunction(&ReturnFunction, Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_FastClampVectorAxes_Statics::FuncParams);
+		}
+		return ReturnFunction;
+	}
+	struct Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics
+	{
+		struct CommonVectorFunctionsBPLibrary_eventGetDistanceAlphaFromBoxEdge_Parms
+		{
+			FVector Point;
+			FVector Center;
+			FVector Extent;
+			float InnerOuterEdgeDistance;
+			float ReturnValue;
+		};
+		static const UECodeGen_Private::FStructPropertyParams NewProp_Point;
+		static const UECodeGen_Private::FStructPropertyParams NewProp_Center;
+		static const UECodeGen_Private::FStructPropertyParams NewProp_Extent;
+		static const UECodeGen_Private::FFloatPropertyParams NewProp_InnerOuterEdgeDistance;
+		static const UECodeGen_Private::FFloatPropertyParams NewProp_ReturnValue;
+		static const UECodeGen_Private::FPropertyParamsBase* const PropPointers[];
+#if WITH_METADATA
+		static const UECodeGen_Private::FMetaDataPairParam Function_MetaDataParams[];
+#endif
+		static const UECodeGen_Private::FFunctionParams FuncParams;
+	};
+	const UECodeGen_Private::FStructPropertyParams Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::NewProp_Point = { "Point", nullptr, (EPropertyFlags)0x0010000000000080, UECodeGen_Private::EPropertyGenFlags::Struct, RF_Public|RF_Transient|RF_MarkAsNative, nullptr, nullptr, 1, STRUCT_OFFSET(CommonVectorFunctionsBPLibrary_eventGetDistanceAlphaFromBoxEdge_Parms, Point), Z_Construct_UScriptStruct_FVector, METADATA_PARAMS(0, nullptr) };
+	const UECodeGen_Private::FStructPropertyParams Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::NewProp_Center = { "Center", nullptr, (EPropertyFlags)0x0010000000000080, UECodeGen_Private::EPropertyGenFlags::Struct, RF_Public|RF_Transient|RF_MarkAsNative, nullptr, nullptr, 1, STRUCT_OFFSET(CommonVectorFunctionsBPLibrary_eventGetDistanceAlphaFromBoxEdge_Parms, Center), Z_Construct_UScriptStruct_FVector, METADATA_PARAMS(0, nullptr) };
+	const UECodeGen_Private::FStructPropertyParams Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::NewProp_Extent = { "Extent", nullptr, (EPropertyFlags)0x0010000000000080, UECodeGen_Private::EPropertyGenFlags::Struct, RF_Public|RF_Transient|RF_MarkAsNative, nullptr, nullptr, 1, STRUCT_OFFSET(CommonVectorFunctionsBPLibrary_eventGetDistanceAlphaFromBoxEdge_Parms, Extent), Z_Construct_UScriptStruct_FVector, METADATA_PARAMS(0, nullptr) };
+	const UECodeGen_Private::FFloatPropertyParams Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::NewProp_InnerOuterEdgeDistance = { "InnerOuterEdgeDistance", nullptr, (EPropertyFlags)0x0010000000000080, UECodeGen_Private::EPropertyGenFlags::Float, RF_Public|RF_Transient|RF_MarkAsNative, nullptr, nullptr, 1, STRUCT_OFFSET(CommonVectorFunctionsBPLibrary_eventGetDistanceAlphaFromBoxEdge_Parms, InnerOuterEdgeDistance), METADATA_PARAMS(0, nullptr) };
+	const UECodeGen_Private::FFloatPropertyParams Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::NewProp_ReturnValue = { "ReturnValue", nullptr, (EPropertyFlags)0x0010000000000580, UECodeGen_Private::EPropertyGenFlags::Float, RF_Public|RF_Transient|RF_MarkAsNative, nullptr, nullptr, 1, STRUCT_OFFSET(CommonVectorFunctionsBPLibrary_eventGetDistanceAlphaFromBoxEdge_Parms, ReturnValue), METADATA_PARAMS(0, nullptr) };
+	const UECodeGen_Private::FPropertyParamsBase* const Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::PropPointers[] = {
+		(const UECodeGen_Private::FPropertyParamsBase*)&Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::NewProp_Point,
+		(const UECodeGen_Private::FPropertyParamsBase*)&Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::NewProp_Center,
+		(const UECodeGen_Private::FPropertyParamsBase*)&Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::NewProp_Extent,
+		(const UECodeGen_Private::FPropertyParamsBase*)&Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::NewProp_InnerOuterEdgeDistance,
+		(const UECodeGen_Private::FPropertyParamsBase*)&Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::NewProp_ReturnValue,
+	};
+#if WITH_METADATA
+	const UECodeGen_Private::FMetaDataPairParam Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::Function_MetaDataParams[] = {
+		{ "Category", "VectorFunctions" },
+		{ "ModuleRelativePath", "Public/CommonVectorFunctionsBPLibrary.h" },
+	};
+#endif
+	const UECodeGen_Private::FFunctionParams Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::FuncParams = { (UObject*(*)())Z_Construct_UClass_UCommonVectorFunctionsBPLibrary, nullptr, "GetDistanceAlphaFromBoxEdge", nullptr, nullptr, Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::PropPointers, UE_ARRAY_COUNT(Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::PropPointers), sizeof(Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::CommonVectorFunctionsBPLibrary_eventGetDistanceAlphaFromBoxEdge_Parms), RF_Public|RF_Transient|RF_MarkAsNative, (EFunctionFlags)0x14822401, 0, 0, METADATA_PARAMS(UE_ARRAY_COUNT(Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::Function_MetaDataParams), Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::Function_MetaDataParams) };
+	static_assert(UE_ARRAY_COUNT(Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::PropPointers) < 2048);
+	static_assert(sizeof(Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::CommonVectorFunctionsBPLibrary_eventGetDistanceAlphaFromBoxEdge_Parms) < MAX_uint16);
+	UFunction* Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge()
+	{
+		static UFunction* ReturnFunction = nullptr;
+		if (!ReturnFunction)
+		{
+			UECodeGen_Private::ConstructUFunction(&ReturnFunction, Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge_Statics::FuncParams);
 		}
 		return ReturnFunction;
 	}
@@ -1090,6 +1153,7 @@ void EmptyLinkFunctionForGeneratedCodeCommonVectorFunctionsBPLibrary() {}
 		{ &Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorMax, "ClampVectorMax" }, // 3308699583
 		{ &Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_ClampVectorMin, "ClampVectorMin" }, // 3218081227
 		{ &Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_FastClampVectorAxes, "FastClampVectorAxes" }, // 1029035288
+		{ &Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_GetDistanceAlphaFromBoxEdge, "GetDistanceAlphaFromBoxEdge" }, // 3829449480
 		{ &Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_InterpolateActor, "InterpolateActor" }, // 1066824368
 		{ &Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_LocationFromDistanceAndRotation, "LocationFromDistanceAndRotation" }, // 1169544903
 		{ &Z_Construct_UFunction_UCommonVectorFunctionsBPLibrary_NormalizeRotator, "NormalizeRotator" }, // 250062330
@@ -1143,15 +1207,15 @@ void EmptyLinkFunctionForGeneratedCodeCommonVectorFunctionsBPLibrary() {}
 	UCommonVectorFunctionsBPLibrary::UCommonVectorFunctionsBPLibrary(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer) {}
 	DEFINE_VTABLE_PTR_HELPER_CTOR(UCommonVectorFunctionsBPLibrary);
 	UCommonVectorFunctionsBPLibrary::~UCommonVectorFunctionsBPLibrary() {}
-	struct Z_CompiledInDeferFile_FID_Users_gustav_baath_Documents_Unreal_Projects_Plugin_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics
+	struct Z_CompiledInDeferFile_FID_Users_gvb7m_Documents_Unreal_Projects_Build_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics
 	{
 		static const FClassRegisterCompiledInInfo ClassInfo[];
 	};
-	const FClassRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Users_gustav_baath_Documents_Unreal_Projects_Plugin_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics::ClassInfo[] = {
-		{ Z_Construct_UClass_UCommonVectorFunctionsBPLibrary, UCommonVectorFunctionsBPLibrary::StaticClass, TEXT("UCommonVectorFunctionsBPLibrary"), &Z_Registration_Info_UClass_UCommonVectorFunctionsBPLibrary, CONSTRUCT_RELOAD_VERSION_INFO(FClassReloadVersionInfo, sizeof(UCommonVectorFunctionsBPLibrary), 298108055U) },
+	const FClassRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Users_gvb7m_Documents_Unreal_Projects_Build_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics::ClassInfo[] = {
+		{ Z_Construct_UClass_UCommonVectorFunctionsBPLibrary, UCommonVectorFunctionsBPLibrary::StaticClass, TEXT("UCommonVectorFunctionsBPLibrary"), &Z_Registration_Info_UClass_UCommonVectorFunctionsBPLibrary, CONSTRUCT_RELOAD_VERSION_INFO(FClassReloadVersionInfo, sizeof(UCommonVectorFunctionsBPLibrary), 2818577711U) },
 	};
-	static FRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Users_gustav_baath_Documents_Unreal_Projects_Plugin_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_2323719818(TEXT("/Script/CommonVectorFunctions"),
-		Z_CompiledInDeferFile_FID_Users_gustav_baath_Documents_Unreal_Projects_Plugin_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics::ClassInfo, UE_ARRAY_COUNT(Z_CompiledInDeferFile_FID_Users_gustav_baath_Documents_Unreal_Projects_Plugin_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics::ClassInfo),
+	static FRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Users_gvb7m_Documents_Unreal_Projects_Build_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_2833502325(TEXT("/Script/CommonVectorFunctions"),
+		Z_CompiledInDeferFile_FID_Users_gvb7m_Documents_Unreal_Projects_Build_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics::ClassInfo, UE_ARRAY_COUNT(Z_CompiledInDeferFile_FID_Users_gvb7m_Documents_Unreal_Projects_Build_CommonVectorFunctions_HostProject_Plugins_CommonVectorFunctions_Source_CommonVectorFunctions_Public_CommonVectorFunctionsBPLibrary_h_Statics::ClassInfo),
 		nullptr, 0,
 		nullptr, 0);
 PRAGMA_ENABLE_DEPRECATION_WARNINGS

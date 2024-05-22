@@ -258,6 +258,25 @@ FVector UCommonVectorFunctionsBPLibrary::ClampVectorInDirection(FVector Input, F
 
     return retVec;
 }
+float UCommonVectorFunctionsBPLibrary::GetDistanceAlphaFromBoxEdge(FVector Point, FVector Center, FVector Extent, float InnerOuterEdgeDistance)
+{
+    float alpha;
+    float xA, yA, zA = 0;
+    Extent = UKismetMathLibrary::Vector_GetAbs(Extent);
+
+    
+    if (FMath::Abs(Point.X) > Center.X + Extent.X - InnerOuterEdgeDistance)
+        xA = UKismetMathLibrary::NormalizeToRange(FMath::Abs(Point.X), Center.X+Extent.X - InnerOuterEdgeDistance, Center.X + Extent.X );
+    if (FMath::Abs(Point.Y) > Center.Y + Extent.Y - InnerOuterEdgeDistance)
+        yA = UKismetMathLibrary::NormalizeToRange(FMath::Abs(Point.Y), Center.Y + Extent.Y - InnerOuterEdgeDistance, Center.Y + Extent.Y );
+    if (FMath::Abs(Point.Z) > Center.Z + Extent.Z - InnerOuterEdgeDistance)
+        zA = UKismetMathLibrary::NormalizeToRange(FMath::Abs(Point.Z), Center.Z + Extent.Z - InnerOuterEdgeDistance, Center.Z+ Extent.Z );
+
+    alpha = 1-FMath::Max3(xA, yA, zA);
+    
+
+    return alpha;
+}
 void UCommonVectorFunctionsBPLibrary::TransformVector(UPARAM(ref)FVector& V, const FTransform T)
 {
     UE_LOG(LogTemp, Warning, TEXT("T Call"));
